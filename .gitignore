@@ -1,1 +1,3 @@
-development.env
+*.env
+spoonacular/__pycache__/
+twitter/__pycache__/
