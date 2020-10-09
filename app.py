@@ -1,9 +1,5 @@
 from flask import Flask, render_template
-from tweepy import OAuthHandler
-from tweepy import API
-from tweepy import Cursor
-from datetime import datetime, date, time, timedelta
-from collections import Counter
+import tweepy
 import requests
 import random
 import sys
@@ -11,40 +7,55 @@ import os
 from dotenv import load_dotenv
 from os.path import join, dirname
 
-#env
-dotenv_path = join(dirname(__file__), 'development.env')
+
+KEY_FLASK_PORT = 'PORT'
+KEY_FLASK_HOST = 'IP'
+FLASK_PORT = 8080
+FLASK_HOST = '0.0.0.0'
+
+SPOONACULAR_ENV_FILENAME = 'spoonacular.env'
+TWITTER_ENV_FILENAME = 'twitter.env'
+
+KEY_TWITTER_CONSUMER = 'CONSUMER_KEY'
+KEY_TWITTER_CONSUMER_SECRET = 'CONSUMER_SECRET'
+KEY_TWITTER_ACCESS = 'ACCESS_KEY'
+KEY_TWITTER_ACCESS_SECRET = 'ACCESS_SECRET'
+
+KEY_SPOONACULAR = 'SPOON_KEY'
+
+DESSERTS = ["cookies", "cake", "ice cream", "apple pie", "brownies", "cupcakes", "smores"]
+
+dotenv_path = join(dirname(__file__), SPOONACULAR_ENV_FILENAME)
+dotenv_path = join(dirname(__file__), TWITTER_ENV_FILENAME)
 load_dotenv(dotenv_path)
 
-#keys
-key = os.getenv('CONSUMER_KEY')
-secret = os.getenv('CONSUMER_SECRET')
-token = os.getenv('ACCESS_KEY')
-token_secret = os.getenv('ACCESS_SECRET')
-key2 = os.getenv('SPOON_KEY')
+twitter_auth = tweepy.OAuthHandler( \
+    os.getenv(KEY_TWITTER_CONSUMER), os.getenv(KEY_TWITTER_CONSUMER_SECRET))
+twitter_auth.set_access_token( \
+    os.getenv(KEY_TWITTER_ACCESS), os.getenv(KEY_TWITTER_ACCESS_SECRET))
+tweepy_api = tweepy.API(twitter_auth)
 
-#tweepy api auth
-auth = OAuthHandler(key, secret)
-auth.set_access_token(token, token_secret)
-api = API(auth)
 
-#https://rapidapi.com/spoonacular/api/recipe-food-nutrition/endpoints
-headers = {
-    'x-rapidapi-host': "spoonacular-recipe-food-nutrition-v1.p.rapidapi.com",
-    'x-rapidapi-key': key2
-    }
+spoonacular_key = os.getenv(KEY_SPOONACULAR)
+
+
 
 app = Flask(__name__)
 @app.route('/')
 
 def index():
  
-    dessertList = ["cookies", "cake", "ice cream", "apple pie", "brownies", "cupcakes", "smores"]
-    randomDessert = random.choice(dessertList)
-    
+    random_dessert = random.choice(DESSERTS)
     
     #Spoonacular search info
     search_url = "https://spoonacular-recipe-food-nutrition-v1.p.rapidapi.com/recipes/search"
-    querystring = {"query":randomDessert, "number":1}
+    querystring = {"query": DESSERTS, "number": 1}
+    
+    headers = {
+    'x-rapidapi-host': "spoonacular-recipe-food-nutrition-v1.p.rapidapi.com",
+    'x-rapidapi-key': spoonacular_key
+    }
+    
     search_response = requests.request("GET", search_url, headers=headers, params=querystring)
     search_data=search_response.json()
     for rec in search_data["results"]:
@@ -69,8 +80,8 @@ def index():
     
     
     #tweepy info
-    searchTweet = Cursor(api.search,
-              q=randomDessert,
+    searchTweet = tweepy.Cursor(tweepy_api.search,
+              q=random_dessert,
               lang="en"
               ).items(1)
     for tweet in searchTweet:
@@ -80,8 +91,8 @@ def index():
     
     return render_template(
         "index.html",
-        dessertList = dessertList,
-        randomDessert = randomDessert,
+        dessertList = DESSERTS,
+        randomDessert = random_dessert,
         searchTweet = searchTweet,
         tweet = tweet,
         text = text,
@@ -102,6 +113,6 @@ def index():
 
 app.run(
     debug=True,
-    port=int(os.getenv('PORT', 8080)),
-    host=os.getenv('IP', '0.0.0.0')
+    port=int(os.getenv(KEY_FLASK_PORT, FLASK_PORT)),
+    host=os.getenv(KEY_FLASK_HOST, FLASK_HOST)
 )
